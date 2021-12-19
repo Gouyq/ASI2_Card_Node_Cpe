@@ -1,10 +1,17 @@
 const express = require('express');
-const Chat = require('./service/Chat');
-const UserService = require('./service/UserService');
+const { copyFile } = require('fs');
+const { UserChat } = require('./model/UserChat');
 const app = express();
 const server = require('http').createServer(app);
-const io = require('socket.io')(server);
+
+const io = require('socket.io')(server,{
+  cors: {
+    origin: '*',
+  }
+});
+
 const port = 8080;
+
 let users = [];
 
 app.get('/client', (req, res) => {
@@ -13,33 +20,36 @@ app.get('/client', (req, res) => {
 
 server.listen(port, () =>{
     console.log(`Now listing on ${port}`)
-    /*var users = UserService.getUsers();
-    console.log(users);*/
 });
 
 
-io.on('connection', (socket) => {
-    //console.log('a user connected');
+io.on('connection', (socket, id) => {
     console.log(socket.id)
-    users.push({id : socket.id})
     
-    //socket.emit('message', 'Welcome user')
-    io.emit('getUser', users)
-
-    //socket.broadcast.emit('message', 'a user has joined the chat')
+    //io.to(socket.id).emit('connected')
+    socket.on('updateUser', (data) => {
+        let user = new UserChat(data.id, data.surName, data.lastName, socket.id);
+        users.push(user);
+        console.log(users);
+        console.log(users.filter(user => user.socketId !== socket.id));
+        io.emit('getUsers', users)
+    });
+    
 
     socket.on('disconnect', () => {
-        users = users.filter(user => user.id !== socket.id)
+        users = users.filter(user => user.socketId !== socket.id)
         io.emit('getUser', users)
-        //io.emit('message', 'a user has left the chat')
     })
 
     socket.on('message', (result) => {
         console.log(users)
         var data = JSON.parse(result);
-        if(data.id !== "all"){
-            io.to(data.id).emit('message', data.message)
-            socket.emit('message', data.message)
+        console.log(data)
+        if(data.receiverId !== "all"){
+            const user = users.find(user => user.id === data.receiverId)
+            console.log(user)
+            io.to(user.socketId).emit('message', data)
+            socket.emit('message', data)
         }
         else{
             console.log(data)
@@ -47,33 +57,3 @@ io.on('connection', (socket) => {
         }
     })
 });
-
-// class salon
-// fonction on et emit + nameSalon
-// creation dans on lobby
-// stockage des différents salons
-// Possibilité de rejoindre un salon
-
-
-/*var lobby = new Chat('lobby', socket, io);
-    var cb = (msg)=>{
-        var salon = new Chat(msg.salon, socket, io)
-        salon.listen(salon.emit)
-    }
-
-    lobby.listen(cb)*/
-    /*
-    socket.on('createChat', (msg) => {
-        (msg) => {
-            socket.on(msg., (msg) => {
-                io.emit('salon1', msg);
-        }
-    
-        console.log('message: ' + msg);
-    });*/
-    /*
-    socket.on('message', (msg) => {
-        //var content = JSON.parse(msg);
-        io.emit('message', msg);
-        console.log('message: ' + msg);
-    });*/

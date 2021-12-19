@@ -13,11 +13,12 @@ class UserService extends Service {
         super(domain)
     }
 
-    getInstance(){
-        if(!instance){
-            return new UserService();
+    static getInstance() {
+        if(this.instance == null) {
+            this.instance = new UserService()
         }
-        return instance
+
+        return this.instance
     }
 
     getUsers(userLogin) {
